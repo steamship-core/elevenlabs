@@ -1,0 +1,45 @@
+{
+	"type": "plugin",
+	"handle": "elevenlabs",
+	"version": "0.0.1",
+	"description": "",
+	"author": "ted",
+	"entrypoint": "Unused",
+	"public": true,
+	"plugin": {
+		"isTrainable": false,
+		"transport": "jsonOverHttp",
+		"type": "generator"
+	},
+	"build_config": {
+		"ignore": [
+			"tests",
+			"examples"
+		]
+	},
+	"configTemplate": {
+		"elevenlabs_api_key": {
+			"type": "string",
+			"description": "API key to use for Eleven Labs. Default uses Steamship's API key.",
+			"default": ""
+		},
+	},
+	"steamshipRegistry": {
+		"tagline": "",
+		"tagline2": null,
+		"usefulFor": null,
+		"videoUrl": null,
+		"githubUrl": null,
+		"demoUrl": null,
+		"blogUrl": null,
+		"jupyterUrl": null,
+		"authorGithub": "eob",
+		"authorName": "eob",
+		"authorEmail": null,
+		"authorTwitter": null,
+		"authorUrl": null,
+		"tags": [
+			"Audio Generator"
+		]
+	}
+}
