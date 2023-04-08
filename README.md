@@ -1,3 +1,13 @@
-# InstructPix2Pix Generator Plugin for Steamship
+# Eleven Labs Generator Plugin for Steamship
 
-Uses an integration with [Replicate](replicate.com) for model hosting.
+## Developing
+
+```
+python3.8 -m venv .venv
+source .venv/bin/activate
+python3.8 -m pip install -r requirements.txt
+python3.8 -m pip install -r requirements.dev.txt
+```
+
+## Testing
+

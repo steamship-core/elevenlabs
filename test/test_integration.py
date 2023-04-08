@@ -3,8 +3,7 @@
 from filetype import filetype
 from steamship import File, MimeTypes, Steamship
 
-IMAGE_GENERATOR_HANDLE = "stable-diffusion-replicate"
-MULTI_MODAL_GENERATOR_HANDLE = "instruct-pix-to-pix-replicate"
+GENERATOR_HANDLE = "elevenlabs"
 
 
 def test_generator():
