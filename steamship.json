@@ -1,7 +1,7 @@
 {
 	"type": "plugin",
 	"handle": "elevenlabs",
-	"version": "0.0.1",
+	"version": "1.0.2",
 	"description": "",
 	"author": "ted",
 	"entrypoint": "Unused",
@@ -20,8 +20,23 @@
 	"configTemplate": {
 		"elevenlabs_api_key": {
 			"type": "string",
-			"description": "API key to use for Eleven Labs. Default uses Steamship's API key.",
+			"description": "API key to use for Elevenlabs. Default uses Steamship's API key.",
 			"default": ""
+		},
+		"voice_id": {
+			"type": "string",
+			"description": "Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)",
+			"default": "21m00Tcm4TlvDq8ikWAM"
+		},
+		"stability": {
+			"type": "number",
+			"description": "",
+			"default": 0.5
+		},
+		"similarity_boost": {
+			"type": "number",
+			"description": "",
+			"default": 0.8
 		}
 	},
 	"steamshipRegistry": {
