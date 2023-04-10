@@ -37,58 +37,6 @@ class ElevenlabsPluginConfig(Config):
     similarity_boost: float = Field(0.8, description="")
 
 
-def save_audio(client: Steamship, filepath: str, audio: bytes) -> str:
-    """Saves audio bytes to the user's workspace."""
-
-    logging.info(f"ElevenLabsGenerator:save_audio - filename={filepath}")
-
-    if bytes is None:
-        raise SteamshipError(message="Empty bytes returned.")
-    
-    workspace = client.get_workspace()
-
-    signed_url_resp = workspace.create_signed_url(
-        SignedUrl.Request(
-            bucket=SignedUrl.Bucket.PLUGIN_DATA,
-            filepath=filepath,
-            operation=SignedUrl.Operation.WRITE,
-        )
-    )
-
-    if not signed_url_resp:
-        raise SteamshipError(
-            message="Empty result on Signed URL request while uploading model checkpoint"
-        )
-    if not signed_url_resp.signed_url:
-        raise SteamshipError(
-            message="Empty signedUrl on Signed URL request while uploading model checkpoint"
-        )
-
-    upload_to_signed_url(
-        signed_url_resp.signed_url, 
-        _bytes=audio
-    )
-
-    get_url_resp = workspace.create_signed_url(
-        SignedUrl.Request(
-            bucket=SignedUrl.Bucket.PLUGIN_DATA,
-            filepath=filepath,
-            operation=SignedUrl.Operation.READ,
-        )
-    )
-
-    if not get_url_resp:
-        raise SteamshipError(
-            message="Empty result on Download Signed URL request while uploading model checkpoint"
-        )
-    if not get_url_resp.signed_url:
-        raise SteamshipError(
-            message="Empty signedUrl on Download Signed URL request while uploading model checkpoint"
-        )
-
-    return get_url_resp.signed_url
-
-
 def create_usage_report(input_text: str, for_url: str) -> UsageReport:
     characters = len(input_text)
     return UsageReport(
@@ -160,17 +108,6 @@ class ElevenlabsPlugin(Generator):
             Block(content=_bytes, mime_type=MimeTypes.MP3, upload_type=BlockUploadType.FILE)
         ]
 
-        # url = save_audio(self.client, into_filename, _bytes)
-        # blocks = [
-        #     Block(
-        #         url=url,
-        #         mime_type=MimeTypes.MP3,
-        #         upload_type=BlockUploadType.URL,
-        #         tags=[
-        #             Tag(kind=TagKind.GENERATION, name="text-to-audio")
-        #         ]
-        #     )
-        # ]
         usages = [
             usage
         ]
