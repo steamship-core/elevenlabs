@@ -61,7 +61,6 @@ def test_generator_hindi():
         # check that Steamship thinks it is a PNG and that the bytes seem like a PNG
         assert block.mime_type == MimeTypes.MP3
         assert block.url is not None
-        print(block.url)
 
         assert len(resp.data.usage) == 1
         assert resp.data.usage[0].operation_amount == len(text)
