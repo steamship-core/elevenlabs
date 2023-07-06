@@ -22,8 +22,69 @@ from steamship.utils.signed_urls import upload_to_signed_url
 import uuid
 
 
+def save_audio(client: Steamship, plugin_instance_id: str, audio: bytes) -> str:
+    """Saves audio bytes to the user's workspace."""
+
+    # generate a UUID and convert it to a string
+    uuid_str = str(uuid.uuid4())
+    filename = f"{uuid_str}.mp4"
+
+    if plugin_instance_id is None:
+        raise SteamshipError(message="Empty plugin_instance_id was provided; unable to save audio file.")
+
+    filepath = f"{plugin_instance_id}/{filename}"
+
+    logging.info(f"ElevenLabsGenerator:save_audio - filename={filename}")
+
+    if bytes is None:
+        raise SteamshipError(message="Empty bytes returned.")
+
+    workspace = client.get_workspace()
+
+    signed_url_resp = workspace.create_signed_url(
+        SignedUrl.Request(
+            bucket=SignedUrl.Bucket.PLUGIN_DATA,
+            filepath=filepath,
+            operation=SignedUrl.Operation.WRITE,
+        )
+    )
+
+    if not signed_url_resp:
+        raise SteamshipError(
+            message="Empty result on Signed URL request while uploading model checkpoint"
+        )
+    if not signed_url_resp.signed_url:
+        raise SteamshipError(
+            message="Empty signedUrl on Signed URL request while uploading model checkpoint"
+        )
+
+    upload_to_signed_url(
+        signed_url_resp.signed_url,
+        _bytes=audio
+    )
+
+    get_url_resp = workspace.create_signed_url(
+        SignedUrl.Request(
+            bucket=SignedUrl.Bucket.PLUGIN_DATA,
+            filepath=filepath,
+            operation=SignedUrl.Operation.READ,
+        )
+    )
+
+    if not get_url_resp:
+        raise SteamshipError(
+            message="Empty result on Download Signed URL request while uploading model checkpoint"
+        )
+    if not get_url_resp.signed_url:
+        raise SteamshipError(
+            message="Empty signedUrl on Download Signed URL request while uploading model checkpoint"
+        )
+
+    return get_url_resp.signed_url
+
+
 class ElevenlabsPluginConfig(Config):
-    """Configuration for the InstructPix2Pix Plugin."""
+    """Configuration for the ElevenLabs Plugin."""
 
     elevenlabs_api_key: str = Field(
         "",
@@ -32,6 +93,10 @@ class ElevenlabsPluginConfig(Config):
     voice_id: str = Field(
         "21m00Tcm4TlvDq8ikWAM",
         description="Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)"
+    )
+    model_id: str = Field(
+        "eleven_monolingual_v1",
+        description="Model ID to use. Defaults to eleven_monolingual_v1. Also available: eleven_multilingual_v1"
     )
     stability: float = Field(0.5, description="")
     similarity_boost: float = Field(0.8, description="")
@@ -46,10 +111,10 @@ def create_usage_report(input_text: str, for_url: str) -> UsageReport:
         audit_id=for_url
     )
 
-
 def generate_audio(input_text: str, audit_url: str, config: ElevenlabsPluginConfig) -> (bytes, UsageReport):
     data = {
         "text": input_text,
+        "model_id": config.model_id,
         "voice_settings": {
             "stability": config.stability,
             "similarity_boost": config.similarity_boost
@@ -104,8 +169,10 @@ class ElevenlabsPlugin(Generator):
         elapsed_time = end_time - start_time
         logging.debug(f"Retrieved audio data in f{elapsed_time}")
 
+        url = save_audio(self.client, self.context.invocable_instance_handle, _bytes)
+
         blocks = [
-            Block(content=_bytes, mime_type=MimeTypes.MP3, upload_type=BlockUploadType.FILE)
+            Block(url=url, mime_type=MimeTypes.MP3, upload_type=BlockUploadType.URL)
         ]
 
         usages = [
