@@ -22,29 +22,23 @@ from steamship.utils.signed_urls import upload_to_signed_url
 import uuid
 
 
-class ElevenlabsPluginConfig(Config):
-    """Configuration for the InstructPix2Pix Plugin."""
-
-    elevenlabs_api_key: str = Field(
-        "",
-        description="API key to use for Elevenlabs. Default uses Steamship's API key."
-    )
-    voice_id: str = Field(
-        "21m00Tcm4TlvDq8ikWAM",
-        description="Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)"
-    )
-    stability: float = Field(0.5, description="")
-    similarity_boost: float = Field(0.8, description="")
-
-
-def save_audio(client: Steamship, filepath: str, audio: bytes) -> str:
+def save_audio(client: Steamship, plugin_instance_id: str, audio: bytes) -> str:
     """Saves audio bytes to the user's workspace."""
 
-    logging.info(f"ElevenLabsGenerator:save_audio - filename={filepath}")
+    # generate a UUID and convert it to a string
+    uuid_str = str(uuid.uuid4())
+    filename = f"{uuid_str}.mp4"
+
+    if plugin_instance_id is None:
+        raise SteamshipError(message="Empty plugin_instance_id was provided; unable to save audio file.")
+
+    filepath = f"{plugin_instance_id}/{filename}"
+
+    logging.info(f"ElevenLabsGenerator:save_audio - filename={filename}")
 
     if bytes is None:
         raise SteamshipError(message="Empty bytes returned.")
-    
+
     workspace = client.get_workspace()
 
     signed_url_resp = workspace.create_signed_url(
@@ -65,7 +59,7 @@ def save_audio(client: Steamship, filepath: str, audio: bytes) -> str:
         )
 
     upload_to_signed_url(
-        signed_url_resp.signed_url, 
+        signed_url_resp.signed_url,
         _bytes=audio
     )
 
@@ -89,6 +83,25 @@ def save_audio(client: Steamship, filepath: str, audio: bytes) -> str:
     return get_url_resp.signed_url
 
 
+class ElevenlabsPluginConfig(Config):
+    """Configuration for the ElevenLabs Plugin."""
+
+    elevenlabs_api_key: str = Field(
+        "",
+        description="API key to use for Elevenlabs. Default uses Steamship's API key."
+    )
+    voice_id: str = Field(
+        "21m00Tcm4TlvDq8ikWAM",
+        description="Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)"
+    )
+    model_id: str = Field(
+        "eleven_monolingual_v1",
+        description="Model ID to use. Defaults to eleven_monolingual_v1. Also available: eleven_multilingual_v1"
+    )
+    stability: float = Field(0.5, description="")
+    similarity_boost: float = Field(0.8, description="")
+
+
 def create_usage_report(input_text: str, for_url: str) -> UsageReport:
     characters = len(input_text)
     return UsageReport(
@@ -98,10 +111,10 @@ def create_usage_report(input_text: str, for_url: str) -> UsageReport:
         audit_id=for_url
     )
 
-
 def generate_audio(input_text: str, audit_url: str, config: ElevenlabsPluginConfig) -> (bytes, UsageReport):
     data = {
         "text": input_text,
+        "model_id": config.model_id,
         "voice_settings": {
             "stability": config.stability,
             "similarity_boost": config.similarity_boost
@@ -156,21 +169,12 @@ class ElevenlabsPlugin(Generator):
         elapsed_time = end_time - start_time
         logging.debug(f"Retrieved audio data in f{elapsed_time}")
 
+        url = save_audio(self.client, self.context.invocable_instance_handle, _bytes)
+
         blocks = [
-            Block(content=_bytes, mime_type=MimeTypes.MP3, upload_type=BlockUploadType.FILE)
+            Block(url=url, mime_type=MimeTypes.MP3, upload_type=BlockUploadType.URL)
         ]
 
-        # url = save_audio(self.client, into_filename, _bytes)
-        # blocks = [
-        #     Block(
-        #         url=url,
-        #         mime_type=MimeTypes.MP3,
-        #         upload_type=BlockUploadType.URL,
-        #         tags=[
-        #             Tag(kind=TagKind.GENERATION, name="text-to-audio")
-        #         ]
-        #     )
-        # ]
         usages = [
             usage
         ]

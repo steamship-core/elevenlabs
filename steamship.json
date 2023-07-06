@@ -1,7 +1,7 @@
 {
 	"type": "plugin",
 	"handle": "elevenlabs",
-	"version": "1.0.2",
+	"version": "1.0.5",
 	"description": "",
 	"author": "ted",
 	"entrypoint": "Unused",
