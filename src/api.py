@@ -216,6 +216,7 @@ class ElevenlabsPlugin(StreamingGenerator):
         ]
         return InvocableResponse(
             data=StreamCompletePluginOutput(
+                usage=usage
             ),
         )
 
