@@ -149,7 +149,6 @@ def generate_audio_stream(input_text: str, audit_url: str, config: ElevenlabsPlu
         raise SteamshipError(f"Received status code {response.status_code} from Eleven Labs. Reason: {response.reason}")
 
 
-
 class ElevenlabsPlugin(StreamingGenerator):
     """Eleven Labs Text-to-Speech generator."""
 
@@ -184,12 +183,12 @@ class ElevenlabsPlugin(StreamingGenerator):
         if not request.data.output_blocks:
             raise SteamshipError(message="Empty output blocks structure was provided. Need at least one to stream into.")
 
-        if not len(request.data.output_blocks) > 1:
+        if len(request.data.output_blocks) > 1:
             raise SteamshipError(message="More than one output block provided. This plugin assumes only one output block.")
 
         # Prepare data
 
-        output_block = request.data.output_blocks[i]
+        output_block = request.data.output_blocks[0]
         prompt_text = " ".join([block.text for block in request.data.blocks if block.text is not None])
         audit_url = f"https://api.steamship.com/api/v1/block/{output_block.id}/raw"
 
