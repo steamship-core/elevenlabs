@@ -1,7 +1,7 @@
 """Test dall-e generator plugin via integration tests."""
 
 from filetype import filetype
-from steamship import File, MimeTypes, Steamship
+from steamship import File, MimeTypes, Steamship, Block
 from time import sleep
 
 GENERATOR_HANDLE = "elevenlabs-ted"
@@ -30,15 +30,20 @@ def test_streaming_audio():
 
 
 def test_streaming_audio_long():
-    client = Steamship(profile="test")
+    client = Steamship(profile="staging", workspace="eleven-airplane-2")
     generator = client.use_plugin(GENERATOR_HANDLE)
+    generator.wait_for_init()
 
     rows = []
-    for i in range(100):
+    for i in range(2):
         rows.append(f"This is sentence {i}.")
     text = "\n".join(rows)
 
     test_file = File.create(client)
+
+    # b = Block.create(client, file_id=test_file.id, text="HI", public_data=True)
+    # r = b.raw()
+
     task = generator.generate(
         text="Hello there! This response was generated with streaming!",
         append_output_to_file=True,
@@ -54,6 +59,9 @@ def test_streaming_audio_long():
     # It's public
     assert block is not None
     assert block.public_data
+
+    with open('out.mpt', 'wb') as f2:
+        f2.write(block.raw())
 
     url = f"https://api.staging.steamship.com/block/{block.id}/raw"
 

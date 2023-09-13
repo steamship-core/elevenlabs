@@ -144,7 +144,7 @@ def generate_audio_stream(input_text: str, audit_url: str, config: ElevenlabsPlu
 
     if response.status_code == 200:
         usage = create_usage_report(input_text, audit_url)
-        return response.iter_content(), usage
+        return response.iter_content(chunk_size=1000), usage
     else:
         raise SteamshipError(f"Received status code {response.status_code} from Eleven Labs. Reason: {response.reason}")
 
@@ -170,6 +170,38 @@ class ElevenlabsPlugin(StreamingGenerator):
         result = [MimeTypes.MP3.value]
         return InvocableResponse(data=BlockTypePluginOutput(block_types_to_create=result))
 
+    def stream_into_block(self, text: str, block: Block) -> UsageReport:
+        """Streams `text` into a block that has been prepared for streaming."""
+        audit_url = f"{self.client.config.api_base}block/{block.id}/raw"
+
+        # Begin Streaming
+
+        start_time = time.time()
+
+        _stream, usage = generate_audio_stream(text, audit_url, self.config)
+        logging.info(f"Streaming audio into {audit_url}")
+        for chunk in _stream:
+            if not chunk:
+                logging.warning(f"THERE WAS NO CHUNK!")
+            try:
+                logging.info(f"Sending chunk: {type(chunk)} {chunk}")
+                block.append_stream(bytes=chunk)
+            except Exception as e:
+                logging.error(f"Exception: {e}")
+                raise e
+
+        logging.info(f"Finished audio stream of {audit_url}.")
+        block.finish_stream()
+        logging.info(f"Called finish_stream on {audit_url}.")
+
+        end_time = time.time()
+
+        # Some light logging
+
+        elapsed_time = end_time - start_time
+        logging.debug(f"Completed audio stream of {audit_url} in f{elapsed_time}")
+        return usage
+
     def run(
         self, request: PluginRequest[RawBlockAndTagPluginInputWithPreallocatedBlocks]
     ) -> InvocableResponse[StreamCompletePluginOutput]:
@@ -186,36 +218,17 @@ class ElevenlabsPlugin(StreamingGenerator):
         if len(request.data.output_blocks) > 1:
             raise SteamshipError(message="More than one output block provided. This plugin assumes only one output block.")
 
-        # Prepare data
+        input_blocks = request.data.blocks
+        output_blocks = request.data.output_blocks
 
-        output_block = request.data.output_blocks[0]
-        prompt_text = " ".join([block.text for block in request.data.blocks if block.text is not None])
-        audit_url = f"https://api.steamship.com/api/v1/block/{output_block.id}/raw"
+        input_text = " ".join([block.text for block in input_blocks if block.text is not None])
+        output_block = output_blocks[0]
 
-        # Begin Streaming
+        usage = self.stream_into_block(input_text, output_block)
 
-        start_time = time.time()
-        
-        _stream, usage = generate_audio_stream(prompt_text, audit_url, self.config)
-        for chunk in _stream:
-            output_block.append_stream(bytes=chunk)
-        output_block.finish_stream()
-        end_time = time.time()
-
-        # Some light logging
-
-        elapsed_time = end_time - start_time
-        logging.debug(f"Completed audio stream in f{elapsed_time}")
-
-        # Return a sync result
-        # TODO: How do we report
-
-        usages = [
-            usage
-        ]
         return InvocableResponse(
             data=StreamCompletePluginOutput(
-                usage=usages
+                usage=[usage]
             ),
         )
 
