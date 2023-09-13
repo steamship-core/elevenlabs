@@ -1,33 +1,24 @@
 """Generator plugin for Stable Diffusion running on replicate.com."""
-import io
-import json
 import logging
 import time
-from typing import Any, Dict, Type, Union
+import uuid
+from typing import Type
 
 import requests
 from pydantic import Field
-from steamship import Block, File, MimeTypes, Steamship, SteamshipError, Task, TaskState, Tag
-from steamship.data import TagKind
-from steamship.data.block import BlockUploadType
+from steamship import Block, MimeTypes, Steamship, SteamshipError
 from steamship.data.workspace import SignedUrl
-from steamship.invocable import Config, InvocableResponse, InvocationContext
-from steamship.plugin.generator import Generator
+from steamship.invocable import Config, InvocableResponse
 from steamship.plugin.inputs.raw_block_and_tag_plugin_input import RawBlockAndTagPluginInput
-from steamship.plugin.outputs.plugin_output import UsageReport, OperationType, OperationUnit
-from steamship.plugin.outputs.raw_block_and_tag_plugin_output import RawBlockAndTagPluginOutput
-from steamship.plugin.request import PluginRequest
-from steamship.utils.signed_urls import upload_to_signed_url
-from steamship.plugin.outputs.block_type_plugin_output import BlockTypePluginOutput
 from steamship.plugin.inputs.raw_block_and_tag_plugin_input_with_preallocated_blocks import (
     RawBlockAndTagPluginInputWithPreallocatedBlocks,
 )
-
+from steamship.plugin.outputs.block_type_plugin_output import BlockTypePluginOutput
+from steamship.plugin.outputs.plugin_output import OperationType, OperationUnit, UsageReport
 from steamship.plugin.outputs.stream_complete_plugin_output import StreamCompletePluginOutput
 from steamship.plugin.request import PluginRequest
 from steamship.plugin.streaming_generator import StreamingGenerator
-
-import uuid
+from steamship.utils.signed_urls import upload_to_signed_url
 
 
 def save_audio(client: Steamship, plugin_instance_id: str, audio: bytes) -> str:
@@ -38,7 +29,9 @@ def save_audio(client: Steamship, plugin_instance_id: str, audio: bytes) -> str:
     filename = f"{uuid_str}.mp4"
 
     if plugin_instance_id is None:
-        raise SteamshipError(message="Empty plugin_instance_id was provided; unable to save audio file.")
+        raise SteamshipError(
+            message="Empty plugin_instance_id was provided; unable to save audio file."
+        )
 
     filepath = f"{plugin_instance_id}/{filename}"
 
@@ -66,10 +59,7 @@ def save_audio(client: Steamship, plugin_instance_id: str, audio: bytes) -> str:
             message="Empty signedUrl on Signed URL request while uploading model checkpoint"
         )
 
-    upload_to_signed_url(
-        signed_url_resp.signed_url,
-        _bytes=audio
-    )
+    upload_to_signed_url(signed_url_resp.signed_url, _bytes=audio)
 
     get_url_resp = workspace.create_signed_url(
         SignedUrl.Request(
@@ -95,20 +85,22 @@ class ElevenlabsPluginConfig(Config):
     """Configuration for the ElevenLabs Plugin."""
 
     elevenlabs_api_key: str = Field(
-        "",
-        description="API key to use for Elevenlabs. Default uses Steamship's API key."
+        "", description="API key to use for Elevenlabs. Default uses Steamship's API key."
     )
     voice_id: str = Field(
         "21m00Tcm4TlvDq8ikWAM",
-        description="Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)"
+        description="Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)",
     )
     model_id: str = Field(
         "eleven_monolingual_v1",
-        description="Model ID to use. Defaults to eleven_monolingual_v1. Also available: eleven_multilingual_v1"
+        description="Model ID to use. Defaults to eleven_monolingual_v1. Also available: eleven_multilingual_v1",
     )
     stability: float = Field(0.5, description="")
     similarity_boost: float = Field(0.8, description="")
-    optimize_streaming_latency: int = Field(0, description="[Optional] An integer from [0,4]. How much to optimize for latency. 0 (Default) is no optimization with highest quality. 4 is lowest latency but may mispronounce words.")
+    optimize_streaming_latency: int = Field(
+        0,
+        description="[Optional] An integer from [0,4]. How much to optimize for latency. 0 (Default) is no optimization with highest quality. 4 is lowest latency but may mispronounce words.",
+    )
 
 
 def create_usage_report(input_text: str, for_url: str) -> UsageReport:
@@ -117,24 +109,26 @@ def create_usage_report(input_text: str, for_url: str) -> UsageReport:
         operation_type=OperationType.RUN,
         operation_unit=OperationUnit.CHARACTERS,
         operation_amount=characters,
-        audit_id=for_url
+        audit_id=for_url,
     )
 
 
-def generate_audio_stream(input_text: str, audit_url: str, config: ElevenlabsPluginConfig) -> (bytes, UsageReport):
+def generate_audio_stream(
+    input_text: str, audit_url: str, config: ElevenlabsPluginConfig
+) -> (bytes, UsageReport):
     data = {
         "text": input_text,
         "model_id": config.model_id,
         "voice_settings": {
             "stability": config.stability,
             "similarity_boost": config.similarity_boost,
-        }
+        },
     }
 
     headers = {
-        'xi-api-key': f"{config.elevenlabs_api_key}",
-        'Content-Type': 'application/json',
-        'accept': 'audio/mpeg'
+        "xi-api-key": f"{config.elevenlabs_api_key}",
+        "Content-Type": "application/json",
+        "accept": "audio/mpeg",
     }
 
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{config.voice_id}/stream?optimize_streaming_latency={config.optimize_streaming_latency}"
@@ -146,7 +140,9 @@ def generate_audio_stream(input_text: str, audit_url: str, config: ElevenlabsPlu
         usage = create_usage_report(input_text, audit_url)
         return response.iter_content(chunk_size=1000), usage
     else:
-        raise SteamshipError(f"Received status code {response.status_code} from Eleven Labs. Reason: {response.reason}")
+        raise SteamshipError(
+            f"Received status code {response.status_code} from Eleven Labs. Reason: {response.reason}"
+        )
 
 
 class ElevenlabsPlugin(StreamingGenerator):
@@ -163,7 +159,7 @@ class ElevenlabsPlugin(StreamingGenerator):
         self, request: PluginRequest[RawBlockAndTagPluginInput]
     ) -> InvocableResponse[BlockTypePluginOutput]:
         """For Streaming operation.
-        
+
         We stream into a single block. A future version of this plugin may generate multiple streams in
         parallel for multi-block input.
         """
@@ -177,20 +173,15 @@ class ElevenlabsPlugin(StreamingGenerator):
         # Begin Streaming
 
         start_time = time.time()
-
         _stream, usage = generate_audio_stream(text, audit_url, self.config)
         logging.info(f"Streaming audio into {audit_url}")
         for chunk in _stream:
-            if not chunk:
-                logging.warning(f"THERE WAS NO CHUNK!")
             try:
-                logging.info(f"Sending chunk: {type(chunk)} {chunk}")
                 block.append_stream(bytes=chunk)
             except Exception as e:
                 logging.error(f"Exception: {e}")
                 raise e
 
-        logging.info(f"Finished audio stream of {audit_url}.")
         block.finish_stream()
         logging.info(f"Called finish_stream on {audit_url}.")
 
@@ -207,16 +198,22 @@ class ElevenlabsPlugin(StreamingGenerator):
     ) -> InvocableResponse[StreamCompletePluginOutput]:
 
         if not self.config.voice_id:
-            raise SteamshipError(message=f"Must provide an Eleven Labs voice_id")
+            raise SteamshipError(message="Must provide an Eleven Labs voice_id")
 
         if not self.context.invocable_instance_handle:
-            raise SteamshipError(message="Empty invocable_instance_handle was provided; unable to save audio file.")
+            raise SteamshipError(
+                message="Empty invocable_instance_handle was provided; unable to save audio file."
+            )
 
         if not request.data.output_blocks:
-            raise SteamshipError(message="Empty output blocks structure was provided. Need at least one to stream into.")
+            raise SteamshipError(
+                message="Empty output blocks structure was provided. Need at least one to stream into."
+            )
 
         if len(request.data.output_blocks) > 1:
-            raise SteamshipError(message="More than one output block provided. This plugin assumes only one output block.")
+            raise SteamshipError(
+                message="More than one output block provided. This plugin assumes only one output block."
+            )
 
         input_blocks = request.data.blocks
         output_blocks = request.data.output_blocks
@@ -227,9 +224,5 @@ class ElevenlabsPlugin(StreamingGenerator):
         usage = self.stream_into_block(input_text, output_block)
 
         return InvocableResponse(
-            data=StreamCompletePluginOutput(
-                usage=[usage]
-            ),
+            data=StreamCompletePluginOutput(usage=[usage]),
         )
-
-
