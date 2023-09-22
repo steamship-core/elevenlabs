@@ -1,6 +1,6 @@
 {
 	"type": "plugin",
-	"handle": "elevenlabs-ted",
+	"handle": "elevenlabs",
 	"version": "1.0.6-rc.8",
 	"description": "",
 	"author": "ted",
