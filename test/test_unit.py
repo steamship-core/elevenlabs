@@ -1,25 +1,26 @@
 """Test dall-e generator plugin via integration tests."""
 
-from steamship import File, MimeTypes, Steamship, Block
+from steamship import Block, File, MimeTypes, Steamship
 from steamship.invocable import InvocationContext
-from steamship.plugin.inputs.raw_block_and_tag_plugin_input import RawBlockAndTagPluginInput
-from steamship.plugin.outputs.plugin_output import OperationUnit, OperationType
-from steamship.plugin.request import PluginRequest
-from api import ElevenlabsPlugin
 from steamship.plugin.inputs.raw_block_and_tag_plugin_input_with_preallocated_blocks import (
     RawBlockAndTagPluginInputWithPreallocatedBlocks,
 )
+from steamship.plugin.outputs.plugin_output import OperationType, OperationUnit
+from steamship.plugin.request import PluginRequest
+
+from api import ElevenlabsPlugin
+
 
 def test_stream_into_block():
-    """Tests the stream"""
+    """Tests streaming into a block"""
     with Steamship.temporary_workspace() as client:
-        plugin = ElevenlabsPlugin(client, None, InvocationContext(
-            invocable_instance_handle="foo"
-        ))
+        plugin = ElevenlabsPlugin(client, None, InvocationContext(invocable_instance_handle="foo"))
 
         text = "Hi there"
         f = File.create(client)
-        output_block = Block.create(client, file_id=f.id, streaming=True, public_data=True, mime_type=MimeTypes.MP3)
+        output_block = Block.create(
+            client, file_id=f.id, streaming=True, public_data=True, mime_type=MimeTypes.MP3
+        )
         usage = plugin.stream_into_block(text, output_block)
         assert usage.operation_unit == OperationUnit.CHARACTERS
         assert usage.operation_type == OperationType.RUN
@@ -31,16 +32,19 @@ def test_stream_into_block():
 
 
 def test_stream_into_block_with_hindi():
+    """Tests Hindi support."""
     with Steamship.temporary_workspace() as client:
-        plugin = ElevenlabsPlugin(client, {
-            "model_id": "eleven_multilingual_v1"
-        }, InvocationContext(
-            invocable_instance_handle="foo"
-        ))
+        plugin = ElevenlabsPlugin(
+            client,
+            {"model_id": "eleven_multilingual_v1"},
+            InvocationContext(invocable_instance_handle="foo"),
+        )
 
         text = "साइकिल पर एक बिल्ली"
         f = File.create(client)
-        output_block = Block.create(client, file_id=f.id, streaming=True, public_data=True, mime_type=MimeTypes.MP3)
+        output_block = Block.create(
+            client, file_id=f.id, streaming=True, public_data=True, mime_type=MimeTypes.MP3
+        )
         usage = plugin.stream_into_block(text, output_block)
 
         assert usage.operation_unit == OperationUnit.CHARACTERS
@@ -53,23 +57,21 @@ def test_stream_into_block_with_hindi():
 
 
 def test_generator_streaming():
+    """Tests streaming into a block with the plugin interface that wraps the raw generation method."""
     with Steamship.temporary_workspace() as client:
-        plugin = ElevenlabsPlugin(client, None, InvocationContext(
-            invocable_instance_handle="foo"
-        ))
+        plugin = ElevenlabsPlugin(client, None, InvocationContext(invocable_instance_handle="foo"))
 
         text = "Hi there"
         f = File.create(client)
-        output_block = Block.create(client, file_id=f.id, streaming=True, public_data=True, mime_type=MimeTypes.MP3)
+        output_block = Block.create(
+            client, file_id=f.id, streaming=True, public_data=True, mime_type=MimeTypes.MP3
+        )
 
-        req = PluginRequest(data=RawBlockAndTagPluginInputWithPreallocatedBlocks(
-            blocks=[
-                Block(text=text)
-            ],
-            output_blocks=[
-                output_block
-            ]
-        ))
+        req = PluginRequest(
+            data=RawBlockAndTagPluginInputWithPreallocatedBlocks(
+                blocks=[Block(text=text)], output_blocks=[output_block]
+            )
+        )
 
         resp = plugin.run(req)
 
