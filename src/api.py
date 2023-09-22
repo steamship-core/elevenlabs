@@ -20,6 +20,8 @@ from steamship.plugin.request import PluginRequest
 from steamship.plugin.streaming_generator import StreamingGenerator
 from steamship.utils.signed_urls import upload_to_signed_url
 
+# Example Voices
+
 
 def save_audio(client: Steamship, plugin_instance_id: str, audio: bytes) -> str:
     """Saves audio bytes to the user's workspace."""
@@ -141,7 +143,7 @@ def generate_audio_stream(
         return response.iter_content(chunk_size=1000), usage
     else:
         raise SteamshipError(
-            f"Received status code {response.status_code} from Eleven Labs. Reason: {response.reason}"
+            f"Received status code {response.status_code} from Eleven Labs. Reason: {response.reason}. Message: {response.text}"
         )
 
 

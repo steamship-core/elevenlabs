@@ -1,7 +1,7 @@
 {
 	"type": "plugin",
 	"handle": "elevenlabs-ted",
-	"version": "1.0.6-rc.7",
+	"version": "1.0.6-rc.8",
 	"description": "",
 	"author": "ted",
 	"entrypoint": "Unused",

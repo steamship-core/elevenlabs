@@ -8,14 +8,27 @@ GENERATOR_HANDLE = "elevenlabs-ted"
 
 
 def test_streaming_audio_long():
-    client = Steamship(profile="staging", workspace="eleven-airplane-4")
+    """THIS TEST IS INTENDED TO BE PERFORMED MANUALLY.
+
+    It creates
+    """
+
+    # Set this to a high number if you want to test streaming while it's still generating.
+    # Then set a breakpoint to get the URL below.
+    BOTTLES_OF_BEER_ON_THE_WALL = 10
+
+    client = Steamship(profile="staging", workspace="eleven-home-1")
     generator = client.use_plugin(GENERATOR_HANDLE)
     generator.wait_for_init()
 
     test_file = File.create(client)
 
+    text = "Want to hear a song?"
+    for i in range(BOTTLES_OF_BEER_ON_THE_WALL, 0, -1):
+        text += f"\n{i} bottles of beer on the wall, {i} bottles of beer."
+
     task = generator.generate(
-        text="Hello there! This response was generated with streaming!",
+        text=text,
         append_output_to_file=True,
         output_file_id=test_file.id,
         make_output_public=True,
