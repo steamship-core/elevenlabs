@@ -2,7 +2,7 @@
 import logging
 import time
 import uuid
-from typing import Type
+from typing import Iterator, Type
 
 import requests
 from pydantic import Field
@@ -117,7 +117,7 @@ def create_usage_report(input_text: str, for_url: str) -> UsageReport:
 
 def generate_audio_stream(
     input_text: str, audit_url: str, config: ElevenlabsPluginConfig
-) -> (bytes, UsageReport):
+) -> (Iterator[bytes], UsageReport):
     data = {
         "text": input_text,
         "model_id": config.model_id,
