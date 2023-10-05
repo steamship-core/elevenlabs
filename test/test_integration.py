@@ -1,32 +1,50 @@
 """Test dall-e generator plugin via integration tests."""
 
-from filetype import filetype
-from steamship import File, MimeTypes, Steamship
+from time import sleep
 
-GENERATOR_HANDLE = "elevenlabs"
+from steamship import File, Steamship
+
+GENERATOR_HANDLE = "elevenlabs-ted"
 
 
-def test_generator():
-    with Steamship.temporary_workspace() as client:
-        sd = client.use_plugin(IMAGE_GENERATOR_HANDLE)
+def test_streaming_audio_long():
+    """THIS TEST IS INTENDED TO BE PERFORMED MANUALLY.
 
-        test_file = File.create(client, handle="test-script", content="script")
-        task = sd.generate(
-            text="A cat on a bicycle",
-            append_output_to_file=True,
-            output_file_id=test_file.id,
-            options={"size": "512x512", "negative_prompt": "water bottles"},
-        )
-        task.wait()
+    It creates
+    """
 
-        test_file.append_block(text="give the cat a helmet")
-        pix2pix = client.use_plugin(MULTI_MODAL_GENERATOR_HANDLE)
-        pix_task = pix2pix.generate(input_file_id=test_file.id)
-        pix_task.wait(max_timeout_s=600)
+    # Set this to a high number if you want to test streaming while it's still generating.
+    # Then set a breakpoint to get the URL below.
+    BOTTLES_OF_BEER_ON_THE_WALL = 10
 
-        block = pix_task.output.blocks[0]
+    client = Steamship(profile="staging", workspace="eleven-home-1")
+    generator = client.use_plugin(GENERATOR_HANDLE)
+    generator.wait_for_init()
 
-        assert block is not None
-        # check that Steamship thinks it is a PNG and that the bytes seem like a PNG
-        assert block.mime_type == MimeTypes.JPG
-        assert filetype.guess_mime(block.raw()) == MimeTypes.JPG
+    test_file = File.create(client)
+
+    text = "Want to hear a song?"
+    for i in range(BOTTLES_OF_BEER_ON_THE_WALL, 0, -1):
+        text += f"\n{i} bottles of beer on the wall, {i} bottles of beer."
+
+    task = generator.generate(
+        text=text,
+        append_output_to_file=True,
+        output_file_id=test_file.id,
+        make_output_public=True,
+    )
+    assert task.task_id
+
+    sleep(2)
+
+    test_file = test_file.refresh()
+
+    block = test_file.blocks[0]
+
+    # It's public
+    assert block is not None
+    assert block.public_data
+
+    url = f"https://api.staging.steamship.com/api/v1/block/{block.id}/raw"
+
+    print(url)

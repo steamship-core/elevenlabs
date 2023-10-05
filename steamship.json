@@ -1,7 +1,7 @@
 {
 	"type": "plugin",
 	"handle": "elevenlabs",
-	"version": "1.0.5",
+	"version": "1.0.6-rc.8",
 	"description": "",
 	"author": "ted",
 	"entrypoint": "Unused",
@@ -9,7 +9,8 @@
 	"plugin": {
 		"isTrainable": false,
 		"transport": "jsonOverHttp",
-		"type": "generator"
+		"type": "generator",
+		"streaming": true
 	},
 	"build_config": {
 		"ignore": [
@@ -28,6 +29,11 @@
 			"description": "Voice ID to use. Defaults to Rachel (21m00Tcm4TlvDq8ikWAM)",
 			"default": "21m00Tcm4TlvDq8ikWAM"
 		},
+		"model_id": {
+			"type": "string",
+			"description": "Model ID to use. Defaults to eleven_monolingual_v1. Also available: eleven_multilingual_v1",
+			"default": "eleven_monolingual_v1"
+		},
 		"stability": {
 			"type": "number",
 			"description": "",
@@ -37,6 +43,11 @@
 			"type": "number",
 			"description": "",
 			"default": 0.8
+		},
+		"optimize_streaming_latency": {
+			"type": "number",
+			"description": "[Optional] An integer from [0,4]. How much to optimize for latency. 0 (Default) is no optimization with highest quality. 4 is lowest latency but may mispronounce words.",
+			"default": 0
 		}
 	},
 	"steamshipRegistry": {

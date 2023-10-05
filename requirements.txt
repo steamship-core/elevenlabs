@@ -1,2 +1,2 @@
-steamship==2.15.0
 requests
+git+https://github.com/steamship-core/python-client.git
